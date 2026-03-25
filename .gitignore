@@ -19,3 +19,13 @@ target
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+.env
+.env.bak.*
+
+walrus_cache*
+walrus-cdn/evaluation_output/*
+DEMO_RUNBOOK.md
+dissertation.pdf
+.demo_blob_id
+walrus-cdn/ids.txt
