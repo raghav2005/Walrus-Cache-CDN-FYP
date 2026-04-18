@@ -27,35 +27,35 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Print events from chosen source (simulated or sui)
-    ///
-    /// By default this exits after `--limit` events. Use `--follow` to keep tailing.
+    // print events from chosen source (simulated or sui)
+    // by default this exits after `--limit` events
+    // use `--follow` to keep tailing
     Index {
-        /// no. of events to pull before exiting (simulated ignores this)
+        // no. of events to pull before exiting (simulated ignores this)
         #[arg(long, default_value_t = 2)]
         limit: usize,
-        /// Keep running and print an updated feed until Ctrl+C
+        // keep running and print an updated feed until Ctrl+C
         #[arg(long, default_value_t = false)]
         follow: bool,
-        /// Demo-friendly compact view: print only key lifecycle events in one line each
+        // demo-friendly compact view: print only key lifecycle events in one line each
         #[arg(long, default_value_t = false)]
         demo_view: bool,
     },
-    /// Download a blob by its Walrus blob ID
+    // download a blob by its Walrus blob ID
     Get {
         #[arg(long)]
         id: String,
         #[arg(long)]
         out: Option<String>,
     },
-    /// Download a blob by Sui object ID
+    // download a blob by Sui object ID
     GetByObject {
         #[arg(long)]
         object_id: String,
         #[arg(long)]
         out: Option<String>,
     },
-    /// Upload bytes via a publisher (local or public); prints blobId
+    // upload bytes via a publisher (local or public) - prints blobId
     Put {
         #[arg(long)]
         data: Option<String>,
@@ -66,7 +66,7 @@ enum Commands {
         #[arg(long, default_value_t = false)]
         permanent: bool,
     },
-    /// Simple load generator: replay blob IDs from a file
+    // simple load generator: replay blob IDs from a file
     Bench {
         #[arg(long)]
         file: String,
@@ -75,7 +75,7 @@ enum Commands {
         #[arg(long, default_value_t = 16)]
         conc: usize,
     },
-    /// Force cache invalidation for demos (by blob id, tag, or epoch)
+    // force cache invalidation for demos (by blob id, tag, or epoch)
     #[command(group(
         ArgGroup::new("target")
             .required(true)
@@ -83,17 +83,17 @@ enum Commands {
             .args(["id", "tag", "epoch_leq"])
     ))]
     CachePurge {
-        /// Purge one blob from cache
+        // purge one blob from cache
         #[arg(long)]
         id: Option<String>,
-        /// Purge all blobs with this tag (e.g. module:walrus)
+        // purge all blobs with this tag (e.g. module:walrus)
         #[arg(long)]
         tag: Option<String>,
-        /// Purge all blobs whose end_epoch <= this value
+        // purge all blobs whose end_epoch <= this value
         #[arg(long = "epoch-leq")]
         epoch_leq: Option<u64>,
     },
-    /// Set/overwrite cached blob end-epoch metadata for deterministic epoch-purge demos
+    // set/overwrite cached blob end-epoch metadata for deterministic epoch-purge demos
     CacheSetEpoch {
         #[arg(long)]
         id: String,
@@ -102,28 +102,28 @@ enum Commands {
         #[arg(long, default_value_t = true, action = ArgAction::Set)]
         deletable: bool,
     },
-    /// Run deterministic cache demo in one process so metrics remain consistent
+    // run deterministic cache demo in one process so metrics remain consistent
     DemoFlow {
         #[arg(long, default_value = "prof-demo")]
         data: String,
         #[arg(long, default_value = "/tmp/prof-demo.bin")]
         out: String,
-        /// Run without pressing Enter between steps
+        // run without pressing Enter between steps
         #[arg(long, default_value_t = false)]
         auto: bool,
-        /// Seconds to wait between steps in --auto mode
+        // seconds to wait between steps in --auto mode
         #[arg(long, default_value_t = 6)]
         step_sleep_secs: u64,
     },
-    /// Run dissertation-grade synthetic evaluation suite and export CSV/JSON artifacts
+    // run dissertation-grade synthetic evaluation suite and export CSV/JSON artifacts
     Evaluate {
-        /// Output directory for summary.csv, warmup_curve.csv, evaluation.json, README.md
+        // output directory for summary.csv, warmup_curve.csv, evaluation.json, README.md
         #[arg(long, default_value = "./evaluation_output")]
         out_dir: String,
-        /// Reproducibility seed
+        // reproducibility seed
         #[arg(long, default_value_t = 42)]
         seed: u64,
-        /// Scale factor (1=default, 2=2x workload, ...)
+        // scale factor (1=default, 2=2x workload, ...)
         #[arg(long, default_value_t = 1)]
         scale: usize,
     },
@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
 
     let cfg = AppConfig::from_env();
 
-    // Start /metrics
+    // start /metrics
     let maddr = cfg.metrics_addr.clone();
     tokio::spawn(async move {
         if let Err(e) = metrics::serve(&maddr).await {
@@ -148,7 +148,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Build one shared cache (optional)
+    // build one shared cache (optional)
     let cache_opt: Option<Arc<Mutex<cache::RocksCache>>> = if cfg.cache_enabled {
         let admission = cfg.cache_admission;
         let adaptsize_k = if cfg.cache_adaptsize {

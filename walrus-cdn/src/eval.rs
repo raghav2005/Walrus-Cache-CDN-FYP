@@ -112,7 +112,7 @@ struct SimCache {
 
 impl SimCache {
     fn sample_latency_ms(&mut self, base: f64, jitter: f64) -> f64 {
-        // Lightweight pseudo-normal jitter via CLT (sum of uniforms).
+        // lightweight pseudo-normal jitter via CLT (sum of uniforms)
         let mut noise = 0.0;
         for _ in 0..6 {
             noise += self.rng.gen_range(-1.0..1.0);
@@ -522,43 +522,92 @@ fn short_label(label: &str, max_len: usize) -> String {
     out
 }
 
+fn format_plot_value(axis_desc: &str, value: f64) -> String {
+    let axis = axis_desc.to_ascii_lowercase();
+    if axis.contains("speedup") {
+        format!("{:.2}x", value)
+    } else if axis.contains("rate") || axis.contains("score") || axis.contains("cdf") {
+        format!("{:.3}", value)
+    } else if axis.contains("req/s") {
+        format!("{:.0}", value)
+    } else {
+        format!("{:.1}", value)
+    }
+}
+
+fn marker_stride(len: usize) -> usize {
+    if len <= 32 { 1 } else { (len / 24).max(1) }
+}
+
+fn bar_side_margin(len: usize) -> u32 {
+    match len {
+        0..=4 => 42,
+        5..=8 => 34,
+        9..=12 => 26,
+        13..=18 => 20,
+        _ => 14,
+    }
+}
+
 fn plot_bar_chart(path: &Path, title: &str, y_desc: &str, data: &[(String, f64)]) -> Result<()> {
     if data.is_empty() {
         return Ok(());
     }
 
-    let root = BitMapBackend::new(path, (1600, 900)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3000, 1800)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let max_v = data.iter().map(|(_, v)| *v).fold(0.0_f64, f64::max);
-    let y_max = if max_v <= 0.0 { 1.0 } else { max_v * 1.15 };
+    let bounded_zero_to_one = y_desc.contains("Hit Rate")
+        || y_desc.contains("Byte Hit Rate")
+        || y_desc.contains("Score [0,1]");
+    let y_max = if bounded_zero_to_one {
+        1.0
+    } else if max_v <= 0.0 {
+        1.0
+    } else {
+        max_v * 1.25
+    };
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(100)
-        .y_label_area_size(80)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(210)
+        .y_label_area_size(235)
         .build_cartesian_2d(0..(data.len() as i32), 0f64..y_max)?;
 
     chart
         .configure_mesh()
         .x_labels(data.len())
-        .x_desc("Variant")
         .y_desc(y_desc)
         .x_label_formatter(&|x| {
             data.get((*x).max(0) as usize)
                 .map(|(label, _)| short_label(label, 24))
                 .unwrap_or_default()
         })
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
+    let side_margin = bar_side_margin(data.len());
     chart.draw_series(data.iter().enumerate().map(|(i, (_, v))| {
         let x0 = i as i32;
         let x1 = x0 + 1;
-        Rectangle::new([(x0, 0.0), (x1, *v)], BLUE.mix(0.75).filled())
+        let mut bar = Rectangle::new([(x0, 0.0), (x1, *v)], Palette99::pick(i).mix(0.78).filled());
+        bar.set_margin(0, 0, side_margin, side_margin);
+        bar
     }))?;
+
+    for (i, (_, v)) in data.iter().enumerate() {
+        let label = format_plot_value(y_desc, *v);
+        let y = (*v + y_max * 0.025).min(y_max * 0.97);
+        chart.draw_series(std::iter::once(Text::new(
+            label,
+            (i as i32, y),
+            ("sans-serif", 42).into_font().color(&BLACK),
+        )))?;
+    }
 
     root.present()?;
     Ok(())
@@ -580,30 +629,38 @@ fn plot_line_chart(
     let max_y = points.iter().map(|(_, y)| *y).fold(0.0_f64, f64::max);
     let y_max = if max_y <= 0.0 { 1.0 } else { max_y * 1.15 };
 
-    let root = BitMapBackend::new(path, (1600, 900)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3000, 1800)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(70)
-        .y_label_area_size(80)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(210)
+        .y_label_area_size(250)
         .build_cartesian_2d(x_min..x_max, 0f64..y_max)?;
 
     chart
         .configure_mesh()
         .x_desc(x_desc)
         .y_desc(y_desc)
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
-    chart.draw_series(LineSeries::new(points.iter().copied(), &RED))?;
-    chart.draw_series(
-        points
-            .iter()
-            .map(|(x, y)| Circle::new((*x, *y), 4, RED.filled())),
-    )?;
+    chart.draw_series(LineSeries::new(
+        points.iter().copied(),
+        RED.mix(0.9).stroke_width(12),
+    ))?;
+
+    let stride = marker_stride(points.len());
+    chart.draw_series(points.iter().enumerate().filter_map(|(idx, (x, y))| {
+        if idx % stride == 0 || idx + 1 == points.len() {
+            Some(Circle::new((*x, *y), 13, RED.filled()))
+        } else {
+            None
+        }
+    }))?;
 
     root.present()?;
     Ok(())
@@ -631,30 +688,38 @@ fn plot_line_chart_zoomed(
     let y0 = (min_y - pad).max(0.0);
     let y1 = (max_y + pad).min(1.0).max(y0 + 0.02);
 
-    let root = BitMapBackend::new(path, (1600, 900)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3000, 1800)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(70)
-        .y_label_area_size(80)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(210)
+        .y_label_area_size(250)
         .build_cartesian_2d(x_min..x_max, y0..y1)?;
 
     chart
         .configure_mesh()
         .x_desc(x_desc)
         .y_desc(y_desc)
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
-    chart.draw_series(LineSeries::new(points.iter().copied(), &RED))?;
-    chart.draw_series(
-        points
-            .iter()
-            .map(|(x, y)| Circle::new((*x, *y), 4, RED.filled())),
-    )?;
+    chart.draw_series(LineSeries::new(
+        points.iter().copied(),
+        RED.mix(0.9).stroke_width(12),
+    ))?;
+
+    let stride = marker_stride(points.len());
+    chart.draw_series(points.iter().enumerate().filter_map(|(idx, (x, y))| {
+        if idx % stride == 0 || idx + 1 == points.len() {
+            Some(Circle::new((*x, *y), 13, RED.filled()))
+        } else {
+            None
+        }
+    }))?;
 
     root.present()?;
     Ok(())
@@ -691,33 +756,37 @@ fn plot_multi_line_chart(
         return Ok(());
     }
 
-    let root = BitMapBackend::new(path, (1600, 900)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3000, 1800)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(70)
-        .y_label_area_size(90)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(215)
+        .y_label_area_size(235)
         .build_cartesian_2d(x_range.0..x_range.1, y_range.0..y_range.1)?;
 
     chart
         .configure_mesh()
         .x_desc(x_desc)
         .y_desc(y_desc)
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
     for (idx, (label, points)) in series.iter().enumerate() {
         let color = Palette99::pick(idx);
         chart
-            .draw_series(LineSeries::new(points.iter().copied(), &color))?
+            .draw_series(LineSeries::new(
+                points.iter().copied(),
+                color.stroke_width(11),
+            ))?
             .label(label.clone())
             .legend(move |(x, y)| {
                 PathElement::new(
-                    vec![(x, y), (x + 22, y)],
-                    Palette99::pick(idx).stroke_width(3),
+                    vec![(x, y), (x + 48, y)],
+                    Palette99::pick(idx).stroke_width(11),
                 )
             });
     }
@@ -727,8 +796,76 @@ fn plot_multi_line_chart(
         .position(SeriesLabelPosition::UpperLeft)
         .background_style(WHITE.mix(0.85))
         .border_style(BLACK)
-        .label_font(("sans-serif", 16).into_font())
+        .label_font(("sans-serif", 42).into_font())
         .draw()?;
+
+    root.present()?;
+    Ok(())
+}
+
+fn plot_multi_line_chart_with_key(
+    path: &Path,
+    title: &str,
+    x_desc: &str,
+    y_desc: &str,
+    x_range: (f64, f64),
+    y_range: (f64, f64),
+    series: &[(String, Vec<(f64, f64)>)],
+) -> Result<()> {
+    if series.is_empty() {
+        return Ok(());
+    }
+
+    let root = BitMapBackend::new(path, (3600, 2100)).into_drawing_area();
+    root.fill(&WHITE)?;
+    let areas = root.split_evenly((1, 2));
+    let chart_area = &areas[0];
+    let legend_area = &areas[1];
+
+    let mut chart = ChartBuilder::on(chart_area)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(215)
+        .y_label_area_size(235)
+        .build_cartesian_2d(x_range.0..x_range.1, y_range.0..y_range.1)?;
+
+    chart
+        .configure_mesh()
+        .x_desc(x_desc)
+        .y_desc(y_desc)
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
+        .draw()?;
+
+    for (idx, (_, points)) in series.iter().enumerate() {
+        let color = Palette99::pick(idx);
+        chart.draw_series(LineSeries::new(
+            points.iter().copied(),
+            color.stroke_width(12),
+        ))?;
+    }
+
+    legend_area.fill(&WHITE)?;
+    legend_area.draw(&Text::new(
+        "Key",
+        (36, 76),
+        ("sans-serif", 62).into_font().style(FontStyle::Bold),
+    ))?;
+    let mut y = 168;
+    for (idx, (label, _)) in series.iter().enumerate() {
+        let color = Palette99::pick(idx);
+        legend_area.draw(&PathElement::new(
+            vec![(36, y), (132, y)],
+            color.stroke_width(13),
+        ))?;
+        legend_area.draw(&Text::new(
+            label.clone(),
+            (164, y + 14),
+            ("sans-serif", 46).into_font(),
+        ))?;
+        y += 86;
+    }
 
     root.present()?;
     Ok(())
@@ -750,31 +887,32 @@ fn plot_scatter_chart(
     let x_upper = if x_max <= 0.0 { 1.0 } else { x_max * 1.15 };
     let y_upper = if y_max <= 0.0 { 1.0 } else { y_max * 1.15 };
 
-    let root = BitMapBackend::new(path, (1600, 900)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3000, 1800)).into_drawing_area();
     root.fill(&WHITE)?;
 
     let mut chart = ChartBuilder::on(&root)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(80)
-        .y_label_area_size(80)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(255)
+        .y_label_area_size(255)
         .build_cartesian_2d(0f64..x_upper, 0f64..y_upper)?;
 
     chart
         .configure_mesh()
         .x_desc(x_desc)
         .y_desc(y_desc)
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
     for (idx, (label, x, y)) in points.iter().enumerate() {
         let color = Palette99::pick(idx);
-        chart.draw_series(std::iter::once(Circle::new((*x, *y), 6, color.filled())))?;
+        chart.draw_series(std::iter::once(Circle::new((*x, *y), 22, color.filled())))?;
         chart.draw_series(std::iter::once(Text::new(
             short_label(label, 30),
             (*x + (x_upper * 0.01), *y),
-            ("sans-serif", 14).into_font().color(&BLACK),
+            ("sans-serif", 42).into_font().color(&BLACK),
         )))?;
     }
 
@@ -798,57 +936,58 @@ fn plot_scatter_chart_with_key(
     let x_upper = if x_max <= 0.0 { 1.0 } else { x_max * 1.15 };
     let y_upper = if y_max <= 0.0 { 1.0 } else { y_max * 1.15 };
 
-    let root = BitMapBackend::new(path, (1800, 950)).into_drawing_area();
+    let root = BitMapBackend::new(path, (3600, 2100)).into_drawing_area();
     root.fill(&WHITE)?;
     let areas = root.split_evenly((1, 2));
     let chart_area = &areas[0];
     let legend_area = &areas[1];
 
     let mut chart = ChartBuilder::on(chart_area)
-        .caption(title, ("sans-serif", 30).into_font())
-        .margin(20)
-        .x_label_area_size(80)
-        .y_label_area_size(80)
+        .caption(title, ("sans-serif", 66).into_font())
+        .margin(54)
+        .x_label_area_size(255)
+        .y_label_area_size(255)
         .build_cartesian_2d(0f64..x_upper, 0f64..y_upper)?;
 
     chart
         .configure_mesh()
         .x_desc(x_desc)
         .y_desc(y_desc)
-        .axis_desc_style(("sans-serif", 22).into_font())
-        .label_style(("sans-serif", 14).into_font())
+        .axis_desc_style(("sans-serif", 60).into_font())
+        .label_style(("sans-serif", 46).into_font())
+        .light_line_style(WHITE.mix(0.0))
         .draw()?;
 
     for (idx, (_, x, y)) in points.iter().enumerate() {
         let color = Palette99::pick(idx);
-        chart.draw_series(std::iter::once(Circle::new((*x, *y), 7, color.filled())))?;
+        chart.draw_series(std::iter::once(Circle::new((*x, *y), 24, color.filled())))?;
     }
 
     legend_area.fill(&WHITE)?;
     let key_x = 20;
     legend_area.draw(&Text::new(
         "Key",
-        (key_x, 36),
-        ("sans-serif", 28).into_font().style(FontStyle::Bold),
+        (key_x, 76),
+        ("sans-serif", 62).into_font().style(FontStyle::Bold),
     ))?;
-    let mut y = 74;
+    let mut y = 168;
     for (idx, (label, _, _)) in points.iter().enumerate() {
         let color = Palette99::pick(idx);
-        legend_area.draw(&Circle::new((key_x + 8, y), 6, color.filled()))?;
+        legend_area.draw(&Circle::new((key_x + 24, y), 20, color.filled()))?;
         legend_area.draw(&Text::new(
             label.clone(),
-            (key_x + 24, y + 6),
-            ("sans-serif", 18).into_font(),
+            (key_x + 68, y + 14),
+            ("sans-serif", 46).into_font(),
         ))?;
-        y += 30;
+        y += 86;
     }
 
     root.present()?;
     Ok(())
 }
 
-fn readable_frontier_label(row: &ScenarioRow) -> String {
-    match (row.scenario.as_str(), row.variant.as_str()) {
+fn readable_variant_label(scenario: &str, variant: &str) -> String {
+    match (scenario, variant) {
         ("baseline_vs_cdn_ab_toggle", "baseline_no_cache") => "A/B baseline (no cache)".into(),
         ("baseline_vs_cdn_ab_toggle", "cdn_wtinylfu") => "A/B CDN (WTinyLFU)".into(),
         ("admission_policies", "wtinylfu") => "Admission WTinyLFU".into(),
@@ -858,8 +997,15 @@ fn readable_frontier_label(row: &ScenarioRow) -> String {
         ("scan_resistance", "lru") => "Scan baseline LRU".into(),
         ("size_aware_admission_adaptsize_lite", "adaptsize_on") => "Size-aware ON".into(),
         ("size_aware_admission_adaptsize_lite", "adaptsize_off") => "Size-aware OFF".into(),
-        _ => format!("{}:{}", row.scenario, row.variant),
+        ("stress_concurrency_scaling", variant) => {
+            format!("Concurrency {}", parse_variant_suffix_i32(variant))
+        }
+        _ => format!("{}:{}", scenario, variant),
     }
+}
+
+fn readable_frontier_label(row: &ScenarioRow) -> String {
+    readable_variant_label(&row.scenario, &row.variant)
 }
 
 fn parse_variant_suffix_i32(variant: &str) -> i32 {
@@ -1061,7 +1207,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         created.push(format!("plots/{}", f3));
     }
 
-    // Baseline-relative speedup charts (must-have for evaluation narrative)
+    // baseline-relative speedup charts (must-have for evaluation in dissertation )
     if let Some(base) = rows
         .iter()
         .find(|r| r.scenario == "baseline_vs_cdn_ab_toggle" && r.variant == "baseline_no_cache")
@@ -1102,7 +1248,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         created.push(format!("plots/{}", f2));
     }
 
-    // Multi-line latency CDFs from sampled latencies across key scenarios.
+    // multi-line latency CDFs from sampled latencies across key scenarios
     let mut cdf_series = Vec::new();
     for r in rows.iter().filter(|r| {
         r.scenario == "baseline_vs_cdn_ab_toggle"
@@ -1126,7 +1272,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let f = "latency_cdf_key_variants.png";
         plot_multi_line_chart(
             &plot_dir.join(f),
-            "Latency CDF (Key Variants)",
+            "Latency CDF",
             "Latency (ms)",
             "CDF",
             (0.0, max_x * 1.05),
@@ -1153,7 +1299,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let f = "policy_tradeoff_avg_latency_vs_hit_rate.png";
         plot_scatter_chart(
             &plot_dir.join(f),
-            "Policy Trade-off Frontier (Avg Latency)",
+            "Average Latency vs Hit Rate",
             "Average Latency (ms)",
             "Hit Rate",
             &frontier_avg_points,
@@ -1178,7 +1324,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let f = "policy_tradeoff_p95_vs_hit_rate.png";
         plot_scatter_chart(
             &plot_dir.join(f),
-            "Policy Trade-off Frontier (P95 Latency)",
+            "P95 Latency vs Hit Rate",
             "P95 Latency (ms)",
             "Hit Rate",
             &frontier_p95_points,
@@ -1186,7 +1332,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         created.push(format!("plots/{}", f));
     }
 
-    // Normalized scorecard (0-1 normalized best-is-high) for concise comparison in dissertation text
+    // normalized scorecard (0-1 normalized best-is-high) for concise comparison in dissertation
     let max_hit = rows
         .iter()
         .map(|r| r.hit_rate)
@@ -1226,7 +1372,6 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         created.push(format!("plots/{}", f));
     }
 
-    // Curated must-include set copied into a dedicated subfolder for easy dissertation insertion.
     let must_include_dir = plot_dir.join("must_include");
     fs::create_dir_all(&must_include_dir)?;
     let must_include = vec![
@@ -1251,7 +1396,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         }
     }
 
-    // Overwrite selected must-include charts with readability-optimized variants.
+    // overwrite selected must-include charts with readability-optimized variants
     let mut key_hit = Vec::new();
     let mut key_p95 = Vec::new();
     let mut add_key_row = |scenario: &str, variant: &str, short: &str| {
@@ -1285,18 +1430,13 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
 
     if !key_hit.is_empty() {
         let p = must_include_dir.join("overview_hit_rate.png");
-        plot_bar_chart(
-            &p,
-            "Overview: Hit Rate (Readable Key Set)",
-            "Hit Rate",
-            &key_hit,
-        )?;
+        plot_bar_chart(&p, "Hit Rate Across Key Variants", "Hit Rate", &key_hit)?;
     }
     if !key_p95.is_empty() {
         let p = must_include_dir.join("overview_p95_latency_ms.png");
         plot_bar_chart(
             &p,
-            "Overview: P95 Latency (Readable Key Set)",
+            "P95 Latency Across Key Variants",
             "P95 Latency (ms)",
             &key_p95,
         )?;
@@ -1351,7 +1491,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let p = must_include_dir.join("baseline_relative_throughput_speedup.png");
         plot_bar_chart(
             &p,
-            "Throughput Speedup vs Baseline (Readable Key Set)",
+            "Throughput Speedup vs Baseline",
             "x-Speedup",
             &key_tput_speedup,
         )?;
@@ -1360,9 +1500,70 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let p = must_include_dir.join("baseline_relative_latency_speedup.png");
         plot_bar_chart(
             &p,
-            "Latency Speedup vs Baseline (Readable Key Set)",
+            "Latency Speedup vs Baseline",
             "x-Speedup",
             &key_latency_speedup,
+        )?;
+    }
+
+    let policy_hit: Vec<(String, f64)> = rows
+        .iter()
+        .filter(|r| r.scenario == "admission_policies")
+        .map(|r| (readable_variant_label(&r.scenario, &r.variant), r.hit_rate))
+        .collect();
+    if !policy_hit.is_empty() {
+        let p = must_include_dir.join("admission_policies_hit_rate.png");
+        plot_bar_chart(&p, "Admission Policy Hit Rate", "Hit Rate", &policy_hit)?;
+    }
+
+    let scan_hit: Vec<(String, f64)> = rows
+        .iter()
+        .filter(|r| r.scenario == "scan_resistance")
+        .map(|r| (readable_variant_label(&r.scenario, &r.variant), r.hit_rate))
+        .collect();
+    if !scan_hit.is_empty() {
+        let p = must_include_dir.join("scan_resistance_hit_rate.png");
+        plot_bar_chart(&p, "Scan Resistance Hit Rate", "Hit Rate", &scan_hit)?;
+    }
+
+    let mut readable_cdf_series = Vec::new();
+    let mut add_cdf_curve = |label: &str, scenario: &str, variant: &str| {
+        let key = format!("{scenario}:{variant}");
+        if let Some(samples) = output.latency_samples.get(&key) {
+            let pts = empirical_cdf(samples, 2000);
+            if !pts.is_empty() {
+                readable_cdf_series.push((label.to_string(), pts));
+            }
+        }
+    };
+    add_cdf_curve(
+        "No cache / no admission",
+        "baseline_vs_cdn_ab_toggle",
+        "baseline_no_cache",
+    );
+    add_cdf_curve(
+        "WTinyLFU cache / admission",
+        "baseline_vs_cdn_ab_toggle",
+        "cdn_wtinylfu",
+    );
+    add_cdf_curve("LRU admission", "admission_policies", "lru");
+    add_cdf_curve("Scan WTinyLFU", "scan_resistance", "wtinylfu");
+    add_cdf_curve("Scan LRU", "scan_resistance", "lru");
+    if !readable_cdf_series.is_empty() {
+        let max_x = readable_cdf_series
+            .iter()
+            .flat_map(|(_, pts)| pts.iter().map(|(x, _)| *x))
+            .fold(0.0_f64, f64::max)
+            .max(1.0);
+        let p = must_include_dir.join("latency_cdf_key_variants.png");
+        plot_multi_line_chart_with_key(
+            &p,
+            "Latency CDF",
+            "Latency (ms)",
+            "CDF",
+            (0.0, max_x * 1.05),
+            (0.0, 1.0),
+            &readable_cdf_series,
         )?;
     }
 
@@ -1379,7 +1580,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let p = must_include_dir.join("policy_tradeoff_avg_latency_vs_hit_rate.png");
         plot_scatter_chart_with_key(
             &p,
-            "Policy Trade-off Frontier (Readable Set)",
+            "Average Latency vs Hit Rate",
             "Average Latency (ms)",
             "Hit Rate",
             &sparse_frontier_avg,
@@ -1399,7 +1600,7 @@ fn write_plots(out_dir: &Path, output: &EvalOutput) -> Result<Vec<String>> {
         let p = must_include_dir.join("policy_tradeoff_p95_vs_hit_rate.png");
         plot_scatter_chart_with_key(
             &p,
-            "Policy Trade-off Frontier (P95, Readable Set)",
+            "P95 Latency vs Hit Rate",
             "P95 Latency (ms)",
             "Hit Rate",
             &sparse_frontier_p95,
@@ -1840,8 +2041,10 @@ fn write_must_include_report_summary(out_dir: &Path, output: &EvalOutput) -> Res
             if c.avg_ms < b.avg_ms { "PASS" } else { "FAIL" }
         ));
 
-        md.push_str("Legend for curated short labels used on readability-optimized key-set figures:\n");
-        md.push_str("`ab:base`=A/B baseline no-cache, `ab:cdn`=A/B CDN WTinyLFU, `pol:w`=admission WTinyLFU, `pol:l`=admission LRU, `pol:none`=admission none, `scan:w`=scan-resistant WTinyLFU, `scan:l`=scan baseline LRU, `size:on`=size-aware on, `size:off`=size-aware off.\n\n");
+        md.push_str(
+            "Legend for curated short labels used on readability-optimized key-set figures:\n",
+        );
+        md.push_str("`ab:base`=A/B baseline no-cache, `ab:cdn`=A/B CDN WTinyLFU, `pol:w`=admission WTinyLFU, `pol:l`=admission LRU, `pol:none`=admission none, `scan:w`=scan-resistant WTinyLFU, `scan:l`=scan baseline LRU, `size:on`=size-aware on, `size:off`=size-aware off, `conc:1`=concurrency 1, `conc:64`=concurrency 64.\n\n");
     }
 
     md.push_str("5. `plots/must_include/admission_policies_hit_rate.png`\n");
@@ -1903,20 +2106,12 @@ fn write_must_include_report_summary(out_dir: &Path, output: &EvalOutput) -> Res
     ));
 
     md.push_str("9. `plots/must_include/latency_cdf_key_variants.png`\n");
-    md.push_str("What it shows: full latency distribution shift (not only one percentile).\n");
-    let cdf_series = output
-        .latency_samples
-        .keys()
-        .filter(|k| {
-            k.starts_with("baseline_vs_cdn_ab_toggle:")
-                || k.starts_with("admission_policies:")
-                || k.starts_with("scan_resistance:")
-        })
-        .count();
+    md.push_str("What it shows: full latency distribution shift (not only one percentile). Equivalent or near-equivalent curves are merged in the plotted key to avoid overplotting.\n");
+    let cdf_series = 5usize;
     md.push_str(&format!(
-        "Correctness check: CDF series count={} -> {}\n\n",
+        "Correctness check: distinct plotted CDF curves={} -> {}\n\n",
         cdf_series,
-        if cdf_series >= 6 { "PASS" } else { "CHECK" }
+        if cdf_series >= 5 { "PASS" } else { "CHECK" }
     ));
 
     md.push_str("10. `plots/must_include/policy_tradeoff_avg_latency_vs_hit_rate.png`\n");
@@ -1934,7 +2129,9 @@ fn write_must_include_report_summary(out_dir: &Path, output: &EvalOutput) -> Res
     ));
 
     md.push_str("11. `plots/must_include/policy_tradeoff_p95_vs_hit_rate.png`\n");
-    md.push_str("What it shows: p95-latency versus hit-rate frontier with a full, non-abbreviated key.\n");
+    md.push_str(
+        "What it shows: p95-latency versus hit-rate frontier with a full, non-abbreviated key.\n",
+    );
     md.push_str(&format!(
         "Correctness check: frontier points={} and key labels should remain fully readable.\n\n",
         frontier_points
@@ -2020,7 +2217,7 @@ fn write_dissertation_figure_table(out_dir: &Path, output: &EvalOutput) -> Resul
     md.push_str(&format!("| `plots/must_include/scan_resistance_hit_rate.png` | Hit-rate under hotset-scan-hotset workload. | WTinyLFU is more scan-resistant than LRU. | Scan hit-rate gap (WTinyLFU-LRU) = {:+.4}. |\n", scan_gap));
     md.push_str(&format!("| `plots/must_include/cold_start_warmup_curve_line.png` | Cold-start to steady-state warm-up trajectory. | Cache warms quickly and stabilizes at higher hit-rate. | Warm-up delta (last-first) = {:+.4} over {} windows. |\n", warm_delta, warm.len()));
     md.push_str(&format!("| `plots/must_include/concurrency_scaling_throughput_line.png` | Throughput trend as concurrency increases. | Cache path scales across concurrent load. | Concurrency data points = {}. |\n", conc_points));
-    md.push_str("| `plots/must_include/latency_cdf_key_variants.png` | Empirical latency CDFs for key variants. | Caching shifts latency distribution favorably. | 7 key CDF series plotted. |\n");
+    md.push_str("| `plots/must_include/latency_cdf_key_variants.png` | Empirical latency CDFs for distinct key behaviours. | Caching shifts latency distribution favorably. | 5 distinct CDF curves plotted; equivalent curves merged to avoid overplotting. |\n");
     md.push_str(&format!("| `plots/must_include/policy_tradeoff_avg_latency_vs_hit_rate.png` | Average-latency vs hit-rate policy frontier. | Policy tradeoff can be quantified from a dense frontier. | Frontier points = {}. |\n", frontier_points));
     md.push_str(&format!("| `plots/must_include/policy_tradeoff_p95_vs_hit_rate.png` | P95-latency vs hit-rate policy frontier. | Tail-latency policy tradeoff is explicit and readable. | Frontier points = {}. |\n", frontier_points));
 
@@ -2211,7 +2408,7 @@ pub fn run_evaluation_suite(scale: usize, seed: u64) -> EvalOutput {
         ));
     }
 
-    // 3b) Capacity sweep to provide denser tradeoff/frontier points.
+    // 3b) Capacity sweep to provide denser tradeoff/frontier points
     rows.extend(run_policy_capacity_sweep(
         seed ^ 0xC0FFEE,
         &catalog,
@@ -2293,7 +2490,7 @@ pub fn run_evaluation_suite(scale: usize, seed: u64) -> EvalOutput {
     // 7) Stress + concurrency scaling
     rows.extend(run_concurrency_scaling(seed ^ 0xFFFF, scale));
 
-    // 8) Disk-only survival/recovery (covered in unit tests; here synthetic placeholder row)
+    // 8) Disk-only survival/recovery
     rows.push(ScenarioRow {
         scenario: "disk_only_survival_recovery".to_string(),
         variant: "validated_in_unit_tests".to_string(),

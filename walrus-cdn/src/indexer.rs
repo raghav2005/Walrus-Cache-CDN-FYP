@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::{pin::Pin, time::Duration};
 use tokio::time::sleep;
 
-// Global cache handle for event-driven invalidation.
+// global cache handle for event-driven invalidation.
 pub static CACHE_HANDLE: OnceCell<std::sync::Arc<std::sync::Mutex<crate::cache::RocksCache>>> =
     OnceCell::new();
 
@@ -427,7 +427,7 @@ pub mod sui_source {
                                     }
                                 }
 
-                                // === cache side-effects ===
+                                // cache side-effects
                                 if let Some(cache) = super::CACHE_HANDLE.get() {
                                     use super::EventKind::*;
                                     let mut cache = cache.lock().unwrap();

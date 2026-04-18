@@ -47,7 +47,7 @@ impl WalrusClient {
         self
     }
 
-    /// GET /v1/blobs/{blobId} -> Vec<u8>
+    // GET /v1/blobs/{blobId} -> Vec<u8>
     pub async fn get_blob_by_id(&self, blob_id: &str) -> Result<Vec<u8>> {
         let t0 = Instant::now();
 
@@ -109,8 +109,8 @@ impl WalrusClient {
         Ok(body.to_vec())
     }
 
-    /// GET /v1/blobs/by-object-id/{object-id} -> Vec<u8>
-    /// (left uncached by default; you can add a separate object-id cache if needed)
+    // GET /v1/blobs/by-object-id/{object-id} -> Vec<u8>
+    // left uncached by default - can add a separate object-id cache if needed
     pub async fn get_blob_by_object_id(&self, object_id: &str) -> Result<Vec<u8>> {
         let url = self
             .base
@@ -125,7 +125,7 @@ impl WalrusClient {
         Ok(res.bytes().await?.to_vec())
     }
 
-    /// PUT /v1/blobs[...] -> returns blobId
+    // PUT /v1/blobs[...] -> returns blobId
     pub async fn put_blob(
         &self,
         data: impl Into<Vec<u8>>,
@@ -138,7 +138,7 @@ impl WalrusClient {
             .blob_id)
     }
 
-    /// PUT /v1/blobs[...] -> returns blobId + optional object/tx identifiers when present
+    // PUT /v1/blobs[...] -> returns blobId + optional object/tx identifiers when present
     pub async fn put_blob_with_details(
         &self,
         data: impl Into<Vec<u8>>,
