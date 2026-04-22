@@ -78,7 +78,6 @@ versions include `axum 0.7`, `reqwest 0.12`, `rocksdb 0.22`, `tokio 1`, and
 | `walrus-cache-cdn/evaluation_output/` | generated evaluation summaries and plots |
 | `walrus-cache-cdn/DEMO_RUNBOOK.md` | four-terminal demo walkthrough |
 | `dissertation.pdf` | current compiled dissertation snapshot |
-| `dissertation_appendices.tex` | appendix material aligned to this workspace |
 
 ## Build and Test
 
