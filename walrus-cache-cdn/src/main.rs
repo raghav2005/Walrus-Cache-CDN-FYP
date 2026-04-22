@@ -18,8 +18,8 @@ use tracing_subscriber::EnvFilter;
 use walrus::WalrusClient;
 
 #[derive(Parser)]
-#[command(name = "walrus-cdn")]
-#[command(about = "Walrus CDN prototype: indexer + HTTP retrieval")]
+#[command(name = "walrus-cache-cdn")]
+#[command(about = "Walrus Cache CDN prototype: indexer + HTTP retrieval")]
 struct Cli {
     #[command(subcommand)]
     cmd: Commands,

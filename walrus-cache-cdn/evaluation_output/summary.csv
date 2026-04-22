@@ -1,0 +1,42 @@
+scenario,variant,requests,hits,misses,hit_rate,byte_hit_rate,p50_ms,p95_ms,avg_ms,total_ms,throughput_rps,notes
+baseline_vs_cdn_ab_toggle,baseline_no_cache,100000,0,100000,0.000000,0.000000,85.025388,93.547143,85.018987,8501898.655040,11.762079,A/B baseline
+baseline_vs_cdn_ab_toggle,cdn_wtinylfu,100000,81695,18305,0.816950,0.436762,6.175762,88.178235,20.461034,2046103.393558,48.873386,A/B cache enabled
+cold_to_warm_sanity,cdn_wtinylfu,100000,81538,18462,0.815380,0.436458,6.171546,88.306135,20.596306,2059630.640309,48.552395,sanity cold->warm
+admission_policies,wtinylfu,100000,81695,18305,0.816950,0.436762,6.172863,88.206022,20.460809,2046080.885060,48.873923,policy comparison
+admission_policies,lru,100000,80489,19511,0.804890,0.433102,6.183296,88.553939,21.420146,2142014.644648,46.685022,policy comparison
+admission_policies,none,100000,0,100000,0.000000,0.000000,84.958083,93.537122,84.971197,8497119.712008,11.768694,policy comparison
+policy_capacity_sweep,wtinylfu_cap_32,100000,79295,20705,0.792950,0.378531,6.200520,88.706141,22.359589,2235958.856404,44.723542,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_48,100000,79822,20178,0.798220,0.389021,6.198354,88.613021,21.947490,2194748.979225,45.563297,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_64,100000,80353,19647,0.803530,0.400284,6.185544,88.544307,21.522531,2152253.059250,46.462938,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_96,100000,81105,18895,0.811050,0.420111,6.179191,88.410253,20.930842,2093084.196830,47.776387,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_128,100000,81695,18305,0.816950,0.436762,6.175718,88.171677,20.466735,2046673.487061,48.859772,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_192,100000,82911,17089,0.829110,0.474970,6.156772,87.872731,19.496545,1949654.466509,51.291140,capacity sweep for policy frontier density
+policy_capacity_sweep,wtinylfu_cap_256,100000,84058,15942,0.840580,0.510339,6.145249,87.563801,18.597322,1859732.154450,53.771184,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_32,100000,44806,55194,0.448060,0.222269,78.045476,92.019189,49.593473,4959347.307360,20.163944,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_48,100000,58427,41573,0.584270,0.293185,6.637397,91.146087,38.857879,3885787.918697,25.734806,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_64,100000,67523,32477,0.675230,0.342197,6.388033,90.360455,31.649315,3164931.491297,31.596261,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_96,100000,77013,22987,0.770130,0.402572,6.232864,89.202995,24.160271,2416027.147125,41.390263,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_128,100000,80489,19511,0.804890,0.433102,6.190245,88.444205,21.420317,2142031.742429,46.684649,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_192,100000,82790,17210,0.827900,0.473895,6.158530,87.869224,19.591888,1959188.849869,51.041532,capacity sweep for policy frontier density
+policy_capacity_sweep,lru_cap_256,100000,84050,15950,0.840500,0.511385,6.144797,87.604566,18.608469,1860846.910470,53.738972,capacity sweep for policy frontier density
+scan_resistance,wtinylfu,11500,6459,5041,0.561652,0.172110,6.730608,91.238240,40.618042,467107.481489,24.619601,hotset->scan->hotset
+scan_resistance,lru,11500,6005,5495,0.522174,0.159837,7.016167,91.502751,43.766383,503313.400887,22.848587,hotset->scan->hotset
+size_aware_admission_adaptsize_lite,adaptsize_off,100000,68035,31965,0.680350,0.440725,6.376039,90.361641,31.273746,3127374.560017,31.975703,WTinyLFU + probabilistic size admission
+size_aware_admission_adaptsize_lite,adaptsize_on,100000,69775,30225,0.697750,0.433802,6.340301,90.176707,29.875048,2987504.754279,33.472750,WTinyLFU + probabilistic size admission
+event_driven_invalidation_correctness,id_tag_epoch,1000,316,684,0.316000,0.313392,81.495919,92.943665,59.988024,59988.024204,16.669994,invalidate by id/tag/epoch and re-read
+stress_concurrency_scaling,wtinylfu_conc_1,40000,33150,6850,0.828750,0.447915,6.157228,87.854757,0.005977,239.091166,167300.200460,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_2,40000,33774,6226,0.844350,0.481894,6.135756,87.452391,0.006474,258.970833,154457.548507,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_3,40000,33881,6119,0.847025,0.498060,6.132036,87.411787,0.007346,293.826625,136134.701884,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_4,40000,34040,5960,0.851000,0.507829,6.128908,87.162440,0.007977,319.060666,125368.007600,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_6,40000,34028,5972,0.850700,0.510059,6.128399,87.150638,0.008335,333.387917,119980.353097,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_8,40000,34099,5901,0.852475,0.514031,6.126068,87.098145,0.007938,317.523334,125974.993699,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_10,40000,34087,5913,0.852175,0.510384,6.130264,87.354865,0.008326,333.026542,120110.546624,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_12,40000,34076,5924,0.851900,0.514000,6.144216,87.216098,0.007811,312.424792,128030.812612,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_16,40000,34114,5886,0.852850,0.516684,6.127824,87.210215,0.008762,350.472667,114131.582193,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_20,40000,34053,5947,0.851325,0.514664,6.131755,87.271031,0.007964,318.565917,125562.710464,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_24,40000,34040,5960,0.851000,0.516872,6.135336,87.282107,0.007885,315.404625,126821.222105,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_32,40000,34087,5913,0.852175,0.519782,6.139803,87.287309,0.008169,326.751625,122417.141766,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_40,40000,34055,5945,0.851375,0.517714,6.129824,87.217477,0.008024,320.946875,124631.218173,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_48,40000,34065,5935,0.851625,0.518844,6.139213,87.281504,0.008393,335.721792,119146.272161,threaded synthetic cache access
+stress_concurrency_scaling,wtinylfu_conc_64,40000,34073,5927,0.851825,0.519976,6.141429,87.286273,0.008280,331.219500,120765.836552,threaded synthetic cache access
+disk_only_survival_recovery,validated_in_unit_tests,0,0,0,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,See cargo test: eval::tests::disk_survival_recovery_roundtrip

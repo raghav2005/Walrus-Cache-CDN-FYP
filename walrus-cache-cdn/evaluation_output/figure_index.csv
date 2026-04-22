@@ -1,0 +1,12 @@
+figure_path,claim_supported,suggested_caption
+plots/must_include/overview_hit_rate.png,Cache/CDN materially increases hit ratio across variants,Overall cache hit-rate across all evaluated scenarios and policy configurations.
+plots/must_include/overview_p95_latency_ms.png,Caching reduces tail latency at system level,"P95 latency comparison across all scenarios, showing reduced tail latency for cache-enabled variants."
+plots/must_include/baseline_relative_throughput_speedup.png,CDN layer provides throughput gains over baseline,"Throughput speedup relative to no-cache baseline, demonstrating effective request offload."
+plots/must_include/baseline_relative_latency_speedup.png,CDN layer provides latency speedup over baseline,Average latency speedup relative to no-cache baseline across evaluated variants.
+plots/must_include/admission_policies_hit_rate.png,Admission policy choice matters for performance,"Hit-rate comparison of WTinyLFU, LRU, and no-admission baseline."
+plots/must_include/scan_resistance_hit_rate.png,WTinyLFU is more scan-resistant than plain LRU,"Hit-rate after hotset-scan-hotset workload, highlighting robustness under scan pressure."
+plots/must_include/cold_start_warmup_curve_line.png,Cache warms up quickly from cold start,Windowed hit-rate trajectory from cold start to steady-state operation.
+plots/must_include/concurrency_scaling_throughput_line.png,Cache path sustains throughput under concurrency,Throughput scaling trend with increasing concurrent request streams.
+plots/must_include/latency_cdf_key_variants.png,Latency distribution shifts favorably with caching,"Latency CDF for key variants, showing probability mass shifted toward lower latency."
+plots/must_include/policy_tradeoff_avg_latency_vs_hit_rate.png,Policy frontier quantifies latency-hit tradeoffs,Average latency versus hit-rate frontier for major policy families.
+plots/must_include/policy_tradeoff_p95_vs_hit_rate.png,Tail-latency frontier clarifies policy tradeoffs,P95 latency versus hit-rate frontier for major policy families with a full-text key.

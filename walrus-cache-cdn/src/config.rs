@@ -47,9 +47,13 @@ impl AppConfig {
             _ => Network::Testnet,
         };
 
-        let aggregator_base =
-            env::var("WALRUS_AGGREGATOR_URL").unwrap_or_else(|_| "http://127.0.0.1:31415".into());
-        let publisher_base = env::var("WALRUS_PUBLISHER_URL").ok();
+        let aggregator_base = env::var("WALRUS_AGGREGATOR_URL").unwrap_or_else(|_| {
+            "https://aggregator.walrus-testnet.walrus.space".into()
+        });
+        let publisher_base = match env::var("WALRUS_PUBLISHER_URL") {
+            Ok(v) if !v.trim().is_empty() => Some(v),
+            _ => Some("https://publisher.walrus-testnet.walrus.space".into()),
+        };
 
         let indexer_mode = match env::var("INDEXER_MODE")
             .unwrap_or_else(|_| "simulated".into())
@@ -71,7 +75,8 @@ impl AppConfig {
         let cache_enabled = env::var("CACHE_ENABLED")
             .map(|v| v.eq_ignore_ascii_case("true"))
             .unwrap_or(true);
-        let cache_db_path = env::var("CACHE_DB_PATH").unwrap_or_else(|_| "./walrus_cache".into());
+        let cache_db_path =
+            env::var("CACHE_DB_PATH").unwrap_or_else(|_| "./walrus_cache_cdn".into());
         let cache_block_cache_mb: usize = env::var("CACHE_BLOCK_CACHE_MB")
             .ok()
             .and_then(|s| s.parse().ok())

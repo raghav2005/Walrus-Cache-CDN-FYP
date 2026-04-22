@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 export RUST_LOG="${RUST_LOG:-info}"
 export METRICS_ADDR="${METRICS_ADDR:-127.0.0.1:9002}"
-export CACHE_DB_PATH="${CACHE_DB_PATH:-./walrus_cache_indexer}"
+export CACHE_DB_PATH="${CACHE_DB_PATH:-./walrus_cache_cdn_indexer}"
 INDEX_DEMO_VIEW="${INDEX_DEMO_VIEW:-true}"
 INDEX_EXTRA_ARGS="${INDEX_EXTRA_ARGS:-}"
 DEMO_BLOB_FILE="${DEMO_BLOB_FILE:-}"

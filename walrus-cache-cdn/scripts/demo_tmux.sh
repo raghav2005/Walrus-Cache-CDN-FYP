@@ -29,9 +29,9 @@ p3="$(tmux split-window -v -P -F '#{pane_id}' -t "$p1")"
 p4="$(tmux split-window -v -P -F '#{pane_id}' -t "$p2")"
 
 tmux send-keys -t "$p1" "cd '$PWD' && ./scripts/demo_t1_mode.sh '$MODE'" C-m
-tmux send-keys -t "$p2" "cd '$PWD' && METRICS_ADDR='$METRICS_ADDR' CACHE_DB_PATH='./walrus_cache_indexer' DEMO_BLOB_FILE='$DEMO_BLOB_FILE' ./scripts/demo_t2_indexer_follow.sh" C-m
+tmux send-keys -t "$p2" "cd '$PWD' && METRICS_ADDR='$METRICS_ADDR' CACHE_DB_PATH='./walrus_cache_cdn_indexer' DEMO_BLOB_FILE='$DEMO_BLOB_FILE' ./scripts/demo_t2_indexer_follow.sh" C-m
 tmux send-keys -t "$p3" "cd '$PWD' && METRICS_ADDRS='${METRICS_ADDR},127.0.0.1:9003' ./scripts/demo_t3_metrics_watch.sh" C-m
-tmux send-keys -t "$p4" "cd '$PWD' && sleep 4 && METRICS_ADDR='127.0.0.1:9003' CACHE_DB_PATH='./walrus_cache_demo' DEMO_BLOB_FILE='$DEMO_BLOB_FILE' DEMO_STEP_MODE='manual' STEP_SLEEP='$FLOW_STEP_SLEEP' ./scripts/demo_t4_cache_flow.sh 'prof-demo'" C-m
+tmux send-keys -t "$p4" "cd '$PWD' && sleep 4 && METRICS_ADDR='127.0.0.1:9003' CACHE_DB_PATH='./walrus_cache_cdn_demo' DEMO_BLOB_FILE='$DEMO_BLOB_FILE' DEMO_STEP_MODE='manual' STEP_SLEEP='$FLOW_STEP_SLEEP' ./scripts/demo_t4_cache_flow.sh 'prof-demo'" C-m
 
 tmux select-layout -t "$SESSION":0 tiled
 
