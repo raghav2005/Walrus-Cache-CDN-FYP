@@ -45,7 +45,7 @@ walrus-cache-cdn/evaluation_output/*
 !walrus-cache-cdn/evaluation_output/plots/
 walrus-cache-cdn/evaluation_output/plots/*
 
-dissertation.pdf
+# dissertation.pdf
 .demo_blob_id
 
 # LaTeX build artefacts
